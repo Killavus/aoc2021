@@ -12,6 +12,7 @@ fn read_diagnostic_report(path: impl AsRef<Path>) -> Result<String, io::Error> {
 }
 
 fn report_verticals(report: &str) -> Vec<BitVec<Msb0>> {
+    // POTENTIAL IMPROVEMENT: Wrap report string slice into a struct which validates it's non-emptiness.
     let line_length = report
         .lines()
         .next()
@@ -54,6 +55,10 @@ fn power_consumption(report: &str) -> usize {
     gamma_rate * epsilon_rate
 }
 
+// In order to avoid additional allocations when searching for variables,
+// partition technique is used for narrow down the search set.
+// This procedure moves all matching bit vectors to the beginning of a slice and
+// returns an amount of moved elements.
 fn partition_report(
     horizontals: &mut [BitVec<Msb0>],
     verticals: &mut [BitVec<Msb0>],
@@ -112,6 +117,8 @@ fn life_support_rating(report: &str) -> usize {
         })
         .collect::<Vec<_>>();
 
+    // POTENTIAL IMPROVEMENT: To cut linear search in half it may be possible (but more unwieldy) to
+    // partition slices for both cases at once.
     let oxygen_generator_rating = search_variable(&mut verticals, &mut horizontals, false);
     let co2_scrubber_rating = search_variable(&mut verticals, &mut horizontals, true);
 
@@ -119,6 +126,8 @@ fn life_support_rating(report: &str) -> usize {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    // POTENTIAL IMPROVEMENT: This code is maintaining vertical & horizontal slices separately.
+    // Maybe it's a good idea to create BitMatrix struct which allows efficient lookups of both columns & rows.
     let diagnostic_report = read_diagnostic_report("./input")?;
 
     println!(
