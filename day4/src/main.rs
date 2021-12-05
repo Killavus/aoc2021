@@ -58,7 +58,6 @@ fn simulate_bingo_game(guesses: &[usize], boards: &mut [BingoBoard]) -> (usize, 
 
 fn main() -> Result<(), Box<dyn Error>> {
     let (guesses, mut boards) = read_input("./input")?;
-
     let (first_won_score, last_won_score) = simulate_bingo_game(&guesses, &mut boards);
 
     println!(
