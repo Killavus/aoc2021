@@ -1,3 +1,4 @@
+use intervaltree::IntervalTree;
 use std::{collections::HashSet, ops::RangeInclusive, path::Path};
 
 use anyhow::{anyhow, Result};
@@ -124,7 +125,8 @@ fn read_input(path: impl AsRef<Path>) -> Result<Vec<HydrothermalVent>> {
 ///
 /// Right now this approach is way slower. It is mostly because y-axis overlap part is not optimized at all.
 /// A proper data structure (interval tree) may be needed to make this approach optimal.
-fn overlapping_vents_count_sweep(vents: &[HydrothermalVent]) -> usize {
+fn overlapping_vents_sweeping(vents: &[HydrothermalVent]) -> usize {
+    // Constructing sweeping structure: O(n * log(n))
     let mut sweep_x = vents
         .iter()
         .enumerate()
@@ -138,29 +140,38 @@ fn overlapping_vents_count_sweep(vents: &[HydrothermalVent]) -> usize {
 
     sweep_x.sort_by_key(|line| (line.0, line.2));
 
+    // Constructing interval tree: O(n * log(n))
+    let y_tree: IntervalTree<usize, usize> = vents
+        .iter()
+        .enumerate()
+        .map(|(index, vent)| {
+            let (start, end) = vent.ordered_positions();
+            ((start.1..end.1 + 1), index)
+        })
+        .collect();
+
     let mut working_set: HashSet<usize> = HashSet::new();
     let mut result_set: HashSet<(usize, usize)> = HashSet::new();
 
+    // Maintaining working set: O(n * log(n))
     for (_, segment, segment_end) in sweep_x {
         if segment_end {
             working_set.remove(&segment);
         } else {
-            working_set.iter().copied().for_each(|idx| {
-                let working_segment = &vents[idx];
-                let segment = &vents[segment];
-
-                if working_segment.y_axis_overlap(&segment)
-                    || segment.y_axis_overlap(&working_segment)
-                {
+            let segment_vent = &vents[segment];
+            let (start, end) = segment_vent.ordered_positions();
+            // Querying: (O(log(n) + m)), checking for working set: O(mlog(n))
+            for overlapping_segment in y_tree.query(start.1..end.1 + 1) {
+                if working_set.contains(&overlapping_segment.value) {
                     result_set.extend(
-                        working_segment
+                        vents[overlapping_segment.value]
                             .points()
                             .into_iter()
                             .collect::<HashSet<_>>()
-                            .intersection(&segment.points().into_iter().collect::<HashSet<_>>()),
+                            .intersection(&segment_vent.points().into_iter().collect()),
                     );
                 }
-            });
+            }
 
             working_set.insert(segment);
         }
