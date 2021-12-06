@@ -179,37 +179,9 @@ fn overlapping_vents_brute(vents: &[HydrothermalVent]) -> usize {
         let mut board = vec![vec![0; max_x + 1]; max_y + 1];
 
         for vent in vents {
-            if vent.start.0 == vent.end.0 {
-                let range =
-                    usize::min(vent.start.1, vent.end.1)..=usize::max(vent.start.1, vent.end.1);
-
-                for y in range {
-                    board[y][vent.start.0] += 1;
-                }
-            } else if vent.start.1 == vent.end.1 {
-                let range =
-                    usize::min(vent.start.0, vent.end.0)..=usize::max(vent.start.0, vent.end.0);
-
-                for x in range {
-                    board[vent.start.1][x] += 1;
-                }
-            } else {
-                let x_range = if vent.start.0 > vent.end.0 {
-                    (vent.end.0..=vent.start.0).rev().collect::<Vec<_>>()
-                } else {
-                    (vent.start.0..=vent.end.0).collect::<Vec<_>>()
-                };
-
-                let y_range = if vent.start.1 > vent.end.1 {
-                    (vent.end.1..=vent.start.1).rev().collect::<Vec<_>>()
-                } else {
-                    (vent.start.1..=vent.end.1).collect::<Vec<_>>()
-                };
-
-                for (x, y) in x_range.into_iter().zip(y_range.into_iter()) {
-                    board[y][x] += 1;
-                }
-            }
+            vent.points()
+                .into_iter()
+                .for_each(|(x, y)| board[y][x] += 1)
         }
 
         board
