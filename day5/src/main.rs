@@ -18,20 +18,6 @@ enum VentOrientation {
 }
 
 impl HydrothermalVent {
-    fn y_axis_overlap(&self, other: &HydrothermalVent) -> bool {
-        let (s, e) = (
-            usize::min(self.start.1, self.end.1),
-            usize::max(self.start.1, self.end.1),
-        );
-
-        let (other_s, other_e) = (
-            usize::min(other.start.1, other.end.1),
-            usize::max(other.start.1, other.end.1),
-        );
-
-        (s..=e).contains(&other_s) || (s..=e).contains(&other_e)
-    }
-
     fn orientation(&self) -> VentOrientation {
         if self.start.0 == self.end.0 {
             VentOrientation::Vertical
