@@ -1,3 +1,7 @@
+/// This module contains logic which is only valid if you trust an input.
+/// Especially code around `ascii_ord` will panic for non-safe (esp. non-ASCII ranges) inputs.
+/// Since the input is known and it can be assumed it's properly formatted, I gave myself
+/// a liberty to use this fact to simplify code.
 use anyhow::anyhow;
 use std::str::FromStr;
 
@@ -21,6 +25,34 @@ impl NoteEntry {
     }
 
     fn unscramble(&self) -> [char; 7] {
+        /* This code solves the riddle following these assumptions:
+         *
+         * This is display:
+         *
+         *  aaaa
+         * b    c
+         * b    c
+         *  dddd
+         * e    f
+         * e    f
+         *  gggg
+         *
+         * Logic:
+         * * You can find digits ONE, SEVEN, EIGHT and FOUR easily - they have unique number of segments.
+         * * -> From having ONE and SEVEN you can unscramble "a" - it is the only character which is not part of one and exists in SEVEN. [a]
+         * * You can filter out SIX, NINE and ZERO - the are the only digits containing six segments.
+         * * You can recognize NINE - it is the only six-segment digit which fully contains FOUR.
+         * * You can recognize SIX - it is the only six-segment digit which does _not_ fully contain ONE.
+         * * You can recognize ZERO - this is the last six-segment digit which is not SIX or NINE.
+         * * -> From having NINE and EIGHT you can unscramble "e" - this is the only character that does not exist in NINE but exists in EIGHT. [a, e]
+         * * -> From having SIX and EIGHT you can unscramble "c" - this is the only character that does not exist in SIX but exists in EIGHT. [a, c, e]
+         * * -> From having ONE and knowing c you can unscramble "f" - this is the character in ONE which is not unscrambled "c". [a, c, e, f]
+         * * -> From having ZERO and EIGHT you can unscramble "b" - this is the only character that does not exist in ZERO but exists in EIGHT. [a, c, d, e, f]
+         * * -> From having unscrambled "c", "d" and "f" you can unscramble "b" - this is the only character in FOUR that you have not unscrambled yet.  [a, b, c, d, e, f]
+         * * -> From having unscrambled all but "g" you can just assign the last non-assigned letter to unscramble "g". [a, b, c, d, e, f, g]
+         *
+         * There are potentially many ways to solve this riddle though.
+         */
         let mut result = ['x'; 7];
 
         let one = self
@@ -35,7 +67,6 @@ impl NoteEntry {
             .find(|x| x.len() == 3)
             .expect("cannot find seven in signal patterns");
 
-        // a is the only one which exists in 7 but not in 1.
         let a_substitute = seven
             .chars()
             .find(|segment| !one.contains(*segment))
@@ -52,7 +83,6 @@ impl NoteEntry {
             .iter()
             .filter(|segment| segment.len() == 6);
 
-        // number 9 is the only one from 6-segmented that fully includes 4.
         let nine = six_segmented
             .clone()
             .find(|potential_nine| {
@@ -61,13 +91,11 @@ impl NoteEntry {
             })
             .expect("cannot find nine in signal patterns");
 
-        // number 6 is the only one from 6-segmented that does not fully include 1.
         let six = six_segmented
             .clone()
             .find(|potential_six| !one.chars().all(|segment| potential_six.contains(segment)))
             .expect("cannot find six in signal patterns");
 
-        // the last 6-segmented digit is zero.
         let zero = six_segmented
             .clone()
             .find(|potential_zero| potential_zero != &six && potential_zero != &nine)
@@ -79,31 +107,26 @@ impl NoteEntry {
             .find(|x| x.len() == 7)
             .expect("cannot find eight in signal patterns");
 
-        // c is the only letter missing from six when comparing to eight
         let c_substitute = eight
             .chars()
             .find(|potential_c| !six.contains(*potential_c))
             .expect("cannot find unique letter between eight and nine");
 
-        // d is the only letter missing from zero when comparing to eight
         let d_substitute = eight
             .chars()
             .find(|potential_d| !zero.contains(*potential_d))
             .expect("cannot find unique letter between eight and zero");
 
-        // e is the only letter missing from nine when comparing to eight
         let e_substitute = eight
             .chars()
             .find(|potential_e| !nine.contains(*potential_e))
             .expect("cannot find unique letter between eight and nine");
 
-        // knowing c we can recognize f from one
         let f_substitute = one
             .chars()
             .find(|f_candidate| *f_candidate != c_substitute)
             .expect("cannot find different segment than c in one");
 
-        // knowing c, d, f we can recognize b from four
         let b_substitute = four
             .chars()
             .find(|b_candidate| ![c_substitute, d_substitute, f_substitute].contains(b_candidate))
@@ -116,7 +139,6 @@ impl NoteEntry {
         result[ascii_ord(e_substitute)] = 'e';
         result[ascii_ord(f_substitute)] = 'f';
 
-        // g is the only missing segment:
         let g_substitute_idx = result
             .iter()
             .position(|ch| *ch == 'x')
