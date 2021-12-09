@@ -53,6 +53,38 @@ impl Heightmap {
             })
             .collect()
     }
+
+    fn basins(&self) -> Vec<(usize, usize)> {
+        let mut basin_map = vec![vec![0; self.max_x]; self.max_y];
+        let mut basins = vec![];
+
+        let mut basin_idx = 1;
+        for (x, y) in self.low_points() {
+            let mut stack = vec![(x, y)];
+            basins.push((basin_idx, 0));
+            let (_, basin_size) = basins.last_mut().unwrap();
+            basin_map[y][x] = basin_idx;
+
+            while let Some((x, y)) = stack.pop() {
+                let value = self.data[y][x];
+                *basin_size += 1;
+
+                for (nx, ny) in self.neighbours(x, y) {
+                    let not_basin_already = basin_map[ny][nx] == 0;
+                    let forms_basin = self.data[ny][nx] != 9 && self.data[ny][nx] > value;
+
+                    if not_basin_already && forms_basin {
+                        basin_map[ny][nx] = basin_idx;
+                        stack.push((nx, ny));
+                    }
+                }
+            }
+
+            basin_idx += 1;
+        }
+
+        basins
+    }
 }
 
 fn digit_to_usize(digit: char) -> Result<usize> {
@@ -91,6 +123,17 @@ fn main() -> Result<()> {
     println!(
         "Total risk level of a heightmap: {}",
         heightmap.risk_level()
+    );
+
+    let mut basins = heightmap.basins();
+    basins.sort_unstable_by_key(|basin| basin.1);
+
+    let three_largest_basins_size_product: usize =
+        basins.iter().rev().take(3).map(|basin| basin.1).product();
+
+    println!(
+        "Product of three largest basins' size: {}",
+        three_largest_basins_size_product
     );
 
     Ok(())
