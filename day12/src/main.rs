@@ -78,6 +78,7 @@ impl FromStr for CaveSystem {
 }
 
 impl CaveSystem {
+    // This propably can be generic enough to support both parts of the riddle.
     fn depth_first<'system>(
         &'system self,
         current: &'system Cave,
@@ -135,6 +136,7 @@ impl CaveSystem {
         }
 
         if used.contains(current) {
+            // In case cave is entered twice we do not want to remove it until we backtrack to 'unused' state of this particular cave.
             if let Some(twice_cave) = twice_cave {
                 if twice_cave != current {
                     used.remove(current);
