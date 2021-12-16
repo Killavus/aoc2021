@@ -211,14 +211,6 @@ impl<'packet> BitsIter<'packet> {
         }
     }
 
-    fn as_nibble(hex: char) -> u8 {
-        if ('0'..='9').contains(&hex) {
-            hex as u8 - '0' as u8
-        } else {
-            hex as u8 - 'A' as u8 + 10
-        }
-    }
-
     fn processed_bits(&self) -> usize {
         self.processed_bits
     }
@@ -229,7 +221,7 @@ impl<'packet> Iterator for BitsIter<'packet> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.bit_idx == 4 {
-            self.current = Self::as_nibble(self.chars.next()?);
+            self.current = self.chars.next().and_then(|ch| ch.to_digit(16))? as u8;
             self.bit_idx = 0;
         }
 
