@@ -116,10 +116,7 @@ impl BITSPacket {
         match &self.payload {
             Payload::LiteralValue(value) => Ok(*value),
             Payload::OperatorPayload(operator, data) => {
-                let evaluated_payload: Vec<usize> = data
-                    .iter()
-                    .map(BITSPacket::evaluate)
-                    .collect::<Result<_, _>>()?;
+                let mut evaluated_payload = data.iter().flat_map(BITSPacket::evaluate);
 
                 match *operator {
                     Sum => Ok(evaluated_payload.into_iter().sum()),
@@ -132,21 +129,42 @@ impl BITSPacket {
                         .into_iter()
                         .min()
                         .ok_or(anyhow!("failed to find minimum in payload")),
-                    GreaterThan => Ok(if evaluated_payload[0] > evaluated_payload[1] {
-                        1
-                    } else {
-                        0
-                    }),
-                    LessThan => Ok(if evaluated_payload[0] < evaluated_payload[1] {
-                        1
-                    } else {
-                        0
-                    }),
-                    EqualTo => Ok(if evaluated_payload[0] == evaluated_payload[1] {
-                        1
-                    } else {
-                        0
-                    }),
+                    GreaterThan => Ok(
+                        if evaluated_payload
+                            .next()
+                            .zip(evaluated_payload.next())
+                            .map(|(x, y)| x > y)
+                            .is_none()
+                        {
+                            1
+                        } else {
+                            0
+                        },
+                    ),
+                    LessThan => Ok(
+                        if evaluated_payload
+                            .next()
+                            .zip(evaluated_payload.next())
+                            .map(|(x, y)| x < y)
+                            .is_none()
+                        {
+                            1
+                        } else {
+                            0
+                        },
+                    ),
+                    EqualTo => Ok(
+                        if evaluated_payload
+                            .next()
+                            .zip(evaluated_payload.next())
+                            .map(|(x, y)| x == y)
+                            .is_none()
+                        {
+                            1
+                        } else {
+                            0
+                        },
+                    ),
                 }
             }
         }
