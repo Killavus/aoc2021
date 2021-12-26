@@ -228,6 +228,19 @@ const SUBROUTINE_COEFFS: [(i64, i64); 14] = [
 
 const REMAINING_DROPS: [i64; 14] = [7, 7, 7, 7, 6, 6, 5, 4, 4, 4, 4, 3, 2, 1];
 
+/// This solution exploits the fact that the input data is very structured & unique.
+// Basically for every digit there are following two programs used to calculate result:
+// prog a: if (z % 26 + px == w) { z } else { 26 * z + py + w }
+// prog b: if (z % 26 + px == w) { z / 26 } else { 26 * (z / 26) + py + w }
+// prog a is used for digits 1, 2, 3, 5, 7, 8, 10 in my input.
+// prog b is used for rest of digits.
+// Only z register 'live' between reads of digits to w. So basically we can do depth-first
+// search of solution space, trying digits and applying prog a/b logic accordingly.
+// key optimisation here to avoid 10**14 search is seeing that only program b can reduce z result
+// and only else-branch of prog a can significantly increase z result. We keep track of remaining
+// possibilities of 'reducing' the result through program b and how many times we've significantly
+// increased the result and bail out early if we cannot reduce the result (number of remaining reductions
+// is higher than number of increases we did).
 fn search_solution_space(
     depth: usize,
     bad_branches: usize,
